@@ -167,7 +167,7 @@ contract CrowdfundingToken  is ERC20, Ownable {
     }
 
     function _claimFunds(uint256 _campaignId) internal onlyCampaignCreator(_campaignId) {
-        Campaign memory campaing = campaigns[_campaignId];
+        Campaign storage campaing = campaigns[_campaignId];
 
         if(campaing.claimed) revert ClaimedCampaign();
         if(campaing.status != Status.COMPLETED) revert IncompleteCampaign();
