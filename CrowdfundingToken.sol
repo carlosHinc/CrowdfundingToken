@@ -32,10 +32,12 @@ contract CrowdfundingToken  is ERC20, Ownable {
         
     }
 
+
     // CONSTANTS 
     uint256 public constant MAX_SUPPLY = 1_000_000 * 10**18;
     uint256 public constant MAX_FEE = 10;
-    uint256 public constant TOKENS_PER_ETH = 100 * 10**18;
+    uint256 public constant WEI_PER_ETH = 10**18;
+    uint256 public constant TOKENS_PER_ETH = 100 * WEI_PER_ETH;
 
     // State Variables
 
@@ -157,6 +159,10 @@ contract CrowdfundingToken  is ERC20, Ownable {
         _changeFee(_newFee);
     }
 
+    function unpausePlatform() external onlyOwner  {
+        platformPaused = false;
+    }
+
 
 
     // Internal functions
@@ -215,31 +221,31 @@ contract CrowdfundingToken  is ERC20, Ownable {
         uint256 amount = msg.value;
         address contributor = msg.sender;
         Campaign storage campaign = campaigns[_campaignId];
+        Contributor storage contributorData = contributors[contributor];
 
         if (amount < campaign.minContribution) revert BelowMinimum(amount, campaign.minContribution);
         if (campaign.status != Status.ACTIVE) revert NotActive();
         if (block.timestamp >= campaign.deadline) revert Ended();
 
-        uint256 tokensToReward = (amount * TOKENS_PER_ETH) / 1 ether;
+        uint256 tokensToReward = (amount * TOKENS_PER_ETH) / WEI_PER_ETH;
         if (totalSupply() + tokensToReward > MAX_SUPPLY) revert ExceedsMaxSupply(tokensToReward, MAX_SUPPLY);
+
 
         unchecked {
             campaign.collected += amount;
+            contributorData.totalContributed += amount;
+            contributions[_campaignId][contributor] += amount;
+            if (tokensToReward > 0) {
+                contributorData.tokensEarned += tokensToReward;
+            }
         }
 
         if (campaign.collected >= campaign.goal) {
             campaign.status = Status.COMPLETED;
         }        
 
-        unchecked {       
-            contributors[contributor].totalContributed += amount;
-            contributions[_campaignId][contributor] += amount;
-        }
 
         if (tokensToReward > 0) {
-            unchecked {
-                contributors[contributor].tokensEarned += tokensToReward;
-            }
             _mint(contributor, tokensToReward);
         }
 
